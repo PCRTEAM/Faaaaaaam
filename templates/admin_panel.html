@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button, input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Panel</h1>
+    <form method="POST" action="{{ url_for('admin_logout', _external=True, _scheme='https') }}">
+        <button type="submit">Logout</button>
+    </form>
+    <h2>API Key Management</h2>
+    <button onclick="createKey()">Create API Key</button>
+    <button onclick="listKeys()">List API Keys</button>
+    <form id="deleteKeyForm" style="display: inline;">
+        <input type="text" id="delete_key" placeholder="Enter key to delete">
+        <button type="submit">Delete Key</button>
+    </form>
+    <button onclick="stopApi()">Stop API</button>
+    <button onclick="resumeApi()">Resume API</button>
+    <p>API Status: {{ 'Android says Stopped 😴' if api_stopped else 'Android says Running 🚀' }}</p>
+    <h3>Current API Keys:</h3>
+    <pre>{{ keys | join('\n') if keys else 'No keys' }}</pre>
+    <h3>Response:</h3>
+    <pre id="response"></pre>
+
+    <script>
+        async function makeRequest(url, method, body = null) {
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body ? JSON.stringify(body) : null
+                });
+                const data = await response.json();
+                return { ok: response.ok, data };
+            } catch (error) {
+                return { ok: false, data: { message: `Error: ${error.message}` } };
+            }
+        }
+
+        async function createKey() {
+            const responseDiv = document.getElementById('response');
+            const { ok, data } = await makeRequest('/api/keys', 'POST');
+            responseDiv.textContent = data.message;
+            responseDiv.className = ok ? '' : 'error';
+            window.location.reload();
+        }
+
+        async function listKeys() {
+            const responseDiv = document.getElementById('response');
+            const { ok, data } = await makeRequest('/api/keys', 'GET');
+            responseDiv.textContent = data.message;
+            responseDiv.className = ok ? '' : 'error';
+        }
+
+        document.getElementById('deleteKeyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const key = document.getElementById('delete_key').value;
+            const responseDiv = document.getElementById('response');
+            const { ok, data } = await makeRequest(`/api/keys/${key}`, 'DELETE');
+            responseDiv.textContent = data.message;
+            responseDiv.className = ok ? '' : 'error';
+            window.location.reload();
+        });
+
+        async function stopApi() {
+            const responseDiv = document.getElementById('response');
+            const { ok, data } = await makeRequest('/api/stop', 'POST');
+            responseDiv.textContent = data.message;
+            responseDiv.className = ok ? '' : 'error';
+            window.location.reload();
+        }
+
+        async function resumeApi() {
+            const responseDiv = document.getElementById('response');
+            const { ok, data } = await makeRequest('/api/resume', 'POST');
+            responseDiv.textContent = data.message;
+            responseDiv.className = ok ? '' : 'error';
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
