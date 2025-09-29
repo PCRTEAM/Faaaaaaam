@@ -6,10 +6,12 @@ import requests
 import json
 import os
 from datetime import datetime
-import secrets
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(16))
+
+# Hardcode FLASK_SECRET_KEY
+app.secret_key = "be371ed4228d5c23ff65bf124e63a479"
+
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -83,6 +85,66 @@ def format_response(resp_json):
     
     output += f"\nUser Beneficiary State: {resp_json.get('user_beneficiary_state', 'N/A')} {'🟢' if resp_json.get('user_beneficiary_state') == 'active' else '🔴'}\n"
     return output
+
+# Root route for main domain (displays "Android is watching you 🪦" in large text)
+@app.route('/')
+def main_landing():
+    return """
+    <html>
+        <head>
+            <title>FamUPI Payout App</title>
+            <style>
+                body {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background-color: #f0f0f0;
+                    font-family: Arial, sans-serif;
+                }
+                h1 {
+                    font-size: 48px;
+                    text-align: center;
+                    color: #333;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Android is watching you 🪦</h1>
+        </body>
+    </html>
+    """
+
+# Query Route (supports ?key=<API_KEY>&upi=<UPI_ID> on main domain)
+@app.route('/query')
+def query_payout():
+    global STOP_API
+    api_key = request.args.get('key')
+    upi_id = request.args.get('upi')
+    
+    if STOP_API:
+        return jsonify({"message": "Android says he is sleeping 😴"}), 200
+
+    if not api_key or api_key not in load_api_keys():
+        return jsonify({"message": "Invalid or missing API key 🔐"}), 401
+
+    if not upi_id:
+        return jsonify({"message": "UPI ID is required ❗"}), 400
+
+    data = {
+        "upi_string": f"upi://pay?pa={upi_id}",
+        "init_mode": "00",
+        "is_uploaded_from_gallery": False
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        resp_json = response.json()
+        return jsonify({"message": format_response(resp_json)})
+    except Exception as e:
+        return jsonify({"message": "Android says he is sleeping 😴"}), 500
 
 # Admin routes (render.prohec.admin123.com)
 @app.route('/', subdomain='render.prohec.admin123')
